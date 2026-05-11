@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useVouchers } from "@/core/application/hooks/useVouchers";
 import { useUsers } from "@/core/application/hooks/useUsers";
 import { useVoucherUsages } from "@/core/application/hooks/useVoucherUsages";
@@ -29,6 +29,10 @@ export const UsagesTab: React.FC = () => {
   const [voucherCode, setVoucherCode] = useState("");
   const [isApplying, setIsApplying] = useState(false);
 
+  useEffect(() => {
+    console.log("UsagesTab: pageInfo updated:", pageInfo);
+  }, [pageInfo]);
+
   const getUserName = (userId: number): string => {
     const user = users.find((u) => u.id === userId);
     return user ? user.fullName : `User #${userId}`;
@@ -55,11 +59,13 @@ export const UsagesTab: React.FC = () => {
       return;
     }
 
+    const normalizedCode = voucherCode.toUpperCase().trim();
     const voucher = vouchers.find(
-      (v) => v.code.toUpperCase() === voucherCode.toUpperCase()
+      (v) => v.code.toUpperCase() === normalizedCode
     );
+    
     if (!voucher) {
-      notifyWarning("Voucher not found");
+      notifyWarning(`Voucher code "${normalizedCode}" does not exist. Please check and try again.`);
       return;
     }
 
@@ -119,7 +125,6 @@ export const UsagesTab: React.FC = () => {
                   render: (_, row: VoucherUsage) => (
                     <div>
                       <p className="font-medium text-xs">{getUserName(row.userId)}</p>
-                      {getUserEmail(row.userId) && <p className="text-[11px] text-gray-500">{getUserEmail(row.userId)}</p>}
                     </div>
                   ),
                 },

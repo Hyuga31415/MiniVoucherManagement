@@ -1,6 +1,7 @@
 import { Voucher } from "../../domain/entities/Voucher";
 import { IVoucherRepository } from "../../domain/repositories/IVoucherRepository";
 import { ApiResponse, PaginatedResponse, PageInfo } from "../../domain/entities/ApiResponse";
+import { toFriendlyApiErrorMessage } from "./apiErrorMessages";
 
 /**
  * VoucherApiRepository - Implements IVoucherRepository
@@ -10,6 +11,40 @@ import { ApiResponse, PaginatedResponse, PageInfo } from "../../domain/entities/
 export class VoucherApiRepository implements IVoucherRepository {
   private readonly baseUrl = "/api";
   private readonly endpoint = "/vouchers";
+  private readonly fallbackMessages = {
+    getAll: "Không thể tải danh sách voucher. Vui lòng thử lại sau.",
+    getById: "Không thể tải thông tin voucher. Vui lòng thử lại sau.",
+    create: "Không thể tạo voucher. Vui lòng thử lại sau.",
+    update: "Không thể cập nhật voucher. Vui lòng thử lại sau.",
+    delete: "Không thể xóa voucher. Vui lòng thử lại sau.",
+    search: "Không thể tìm kiếm voucher. Vui lòng thử lại sau.",
+  };
+
+  /**
+   * Normalize backend error payloads into a user-friendly message.
+   */
+  private normalizeErrorMessage(bodyText: string | null, fallback: string): string {
+    if (!bodyText) return fallback;
+
+    try {
+      const parsed = JSON.parse(bodyText);
+      const rawMessage = parsed?.message ?? parsed?.error ?? bodyText;
+      const message = String(rawMessage).toLowerCase();
+
+      if (message.includes("not found") || message.includes("không tìm thấy") || message.includes("voucher not found")) {
+        return "Không tìm thấy voucher.";
+      }
+
+      return String(rawMessage);
+    } catch {
+      const message = bodyText.toLowerCase();
+      if (message.includes("not found") || message.includes("không tìm thấy") || message.includes("voucher not found")) {
+        return "Không tìm thấy voucher.";
+      }
+
+      return bodyText;
+    }
+  }
 
   /**
    * Extract content array from paginated API response
@@ -62,7 +97,17 @@ export class VoucherApiRepository implements IVoucherRepository {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP Error: ${response.status}`);
+        const bodyText = await response.text().catch(() => null);
+        return {
+          success: false,
+          message: toFriendlyApiErrorMessage({
+            status: response.status,
+            bodyText,
+            fallback: this.fallbackMessages.getAll,
+            notFoundMessage: "Không tìm thấy voucher.",
+          }),
+          data: { items: [], pageInfo: this.extractPageInfo(null) },
+        };
       }
 
       const apiResponse: ApiResponse<any> = await response.json();
@@ -81,16 +126,21 @@ export class VoucherApiRepository implements IVoucherRepository {
 
       return {
         success: false,
-        message: apiResponse.message || "Failed to fetch vouchers",
+        message: toFriendlyApiErrorMessage({
+          bodyText: apiResponse.message,
+          fallback: this.fallbackMessages.getAll,
+          notFoundMessage: "Không tìm thấy voucher.",
+        }),
         data: { items: [], pageInfo: this.extractPageInfo(null) },
       };
     } catch (error) {
       return {
         success: false,
-        message:
-          error instanceof Error
-            ? error.message
-            : "Error fetching vouchers",
+        message: toFriendlyApiErrorMessage({
+          bodyText: error instanceof Error ? error.message : null,
+          fallback: this.fallbackMessages.getAll,
+          notFoundMessage: "Không tìm thấy voucher.",
+        }),
         data: { items: [], pageInfo: this.extractPageInfo(null) },
       };
     }
@@ -109,7 +159,16 @@ export class VoucherApiRepository implements IVoucherRepository {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP Error: ${response.status}`);
+        const bodyText = await response.text().catch(() => null);
+        return {
+          success: false,
+          message: toFriendlyApiErrorMessage({
+            status: response.status,
+            bodyText,
+            fallback: this.fallbackMessages.getById,
+            notFoundMessage: "Không tìm thấy voucher.",
+          }),
+        };
       }
 
       const apiResponse: ApiResponse<any> = await response.json();
@@ -125,15 +184,20 @@ export class VoucherApiRepository implements IVoucherRepository {
 
       return {
         success: false,
-        message: apiResponse.message || "Voucher not found",
+        message: toFriendlyApiErrorMessage({
+          bodyText: apiResponse.message,
+          fallback: this.fallbackMessages.getById,
+          notFoundMessage: "Không tìm thấy voucher.",
+        }),
       };
     } catch (error) {
       return {
         success: false,
-        message:
-          error instanceof Error
-            ? error.message
-            : "Error fetching voucher",
+        message: toFriendlyApiErrorMessage({
+          bodyText: error instanceof Error ? error.message : null,
+          fallback: this.fallbackMessages.getById,
+          notFoundMessage: "Không tìm thấy voucher.",
+        }),
       };
     }
   }
@@ -159,7 +223,16 @@ export class VoucherApiRepository implements IVoucherRepository {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP Error: ${response.status}`);
+        const bodyText = await response.text().catch(() => null);
+        return {
+          success: false,
+          message: toFriendlyApiErrorMessage({
+            status: response.status,
+            bodyText,
+            fallback: this.fallbackMessages.create,
+            notFoundMessage: "Không tìm thấy voucher.",
+          }),
+        };
       }
 
       const apiResponse: ApiResponse<any> = await response.json();
@@ -175,15 +248,20 @@ export class VoucherApiRepository implements IVoucherRepository {
 
       return {
         success: false,
-        message: apiResponse.message || "Failed to create voucher",
+        message: toFriendlyApiErrorMessage({
+          bodyText: apiResponse.message,
+          fallback: this.fallbackMessages.create,
+          notFoundMessage: "Không tìm thấy voucher.",
+        }),
       };
     } catch (error) {
       return {
         success: false,
-        message:
-          error instanceof Error
-            ? error.message
-            : "Error creating voucher",
+        message: toFriendlyApiErrorMessage({
+          bodyText: error instanceof Error ? error.message : null,
+          fallback: this.fallbackMessages.create,
+          notFoundMessage: "Không tìm thấy voucher.",
+        }),
       };
     }
   }
@@ -209,7 +287,16 @@ export class VoucherApiRepository implements IVoucherRepository {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP Error: ${response.status}`);
+        const bodyText = await response.text().catch(() => null);
+        return {
+          success: false,
+          message: toFriendlyApiErrorMessage({
+            status: response.status,
+            bodyText,
+            fallback: this.fallbackMessages.update,
+            notFoundMessage: "Không tìm thấy voucher.",
+          }),
+        };
       }
 
       const apiResponse: ApiResponse<any> = await response.json();
@@ -225,15 +312,20 @@ export class VoucherApiRepository implements IVoucherRepository {
 
       return {
         success: false,
-        message: apiResponse.message || "Failed to update voucher",
+        message: toFriendlyApiErrorMessage({
+          bodyText: apiResponse.message,
+          fallback: this.fallbackMessages.update,
+          notFoundMessage: "Không tìm thấy voucher.",
+        }),
       };
     } catch (error) {
       return {
         success: false,
-        message:
-          error instanceof Error
-            ? error.message
-            : "Error updating voucher",
+        message: toFriendlyApiErrorMessage({
+          bodyText: error instanceof Error ? error.message : null,
+          fallback: this.fallbackMessages.update,
+          notFoundMessage: "Không tìm thấy voucher.",
+        }),
       };
     }
   }
@@ -251,7 +343,16 @@ export class VoucherApiRepository implements IVoucherRepository {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP Error: ${response.status}`);
+        const bodyText = await response.text().catch(() => null);
+        return {
+          success: false,
+          message: toFriendlyApiErrorMessage({
+            status: response.status,
+            bodyText,
+            fallback: this.fallbackMessages.delete,
+            notFoundMessage: "Không tìm thấy voucher.",
+          }),
+        };
       }
 
       const apiResponse: ApiResponse<void> = await response.json();
@@ -264,10 +365,11 @@ export class VoucherApiRepository implements IVoucherRepository {
     } catch (error) {
       return {
         success: false,
-        message:
-          error instanceof Error
-            ? error.message
-            : "Error deleting voucher",
+        message: toFriendlyApiErrorMessage({
+          bodyText: error instanceof Error ? error.message : null,
+          fallback: this.fallbackMessages.delete,
+          notFoundMessage: "Không tìm thấy voucher.",
+        }),
       };
     }
   }
@@ -306,7 +408,12 @@ export class VoucherApiRepository implements IVoucherRepository {
 
           // If client error (400-499) we should surface it instead of trying other variants
           if (response.status >= 400 && response.status < 500) {
-            const message = bodyText || `HTTP Error: ${response.status}`;
+            const message = toFriendlyApiErrorMessage({
+              status: response.status,
+              bodyText,
+              fallback: this.fallbackMessages.search,
+              notFoundMessage: "Không tìm thấy voucher.",
+            });
             return {
               success: false,
               message,
@@ -368,7 +475,7 @@ export class VoucherApiRepository implements IVoucherRepository {
     // All variants failed
     return {
       success: false,
-      message: "Search failed: no compatible endpoint responded",
+      message: this.fallbackMessages.search,
       data: { items: [], pageInfo: this.extractPageInfo(null) },
     };
   }

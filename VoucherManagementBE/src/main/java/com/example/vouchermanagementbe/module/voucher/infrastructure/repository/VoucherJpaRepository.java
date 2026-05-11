@@ -7,5 +7,4 @@ import java.util.Optional;
 
 public interface VoucherJpaRepository extends JpaRepository<VoucherEntity, Long> {
     Optional<VoucherEntity> findByCode(String code);
-    boolean existsByCode(String code);
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { Voucher } from "../../domain/entities/Voucher";
 import { VoucherApiRepository } from "../../infrastructure/api/VoucherApiRepository";
 import { VoucherUsageApiRepository } from "../../infrastructure/api/VoucherUsageApiRepository";
@@ -28,9 +28,12 @@ export const useVouchers = () => {
   const [error, setError] = useState<string | null>(null);
   const [searchCode, setSearchCode] = useState("");
   const [pageInfo, setPageInfo] = useState<PageInfo>(DEFAULT_PAGE_INFO);
+  const initializedRef = useRef(false);
+  const pageSizeRef = useRef(DEFAULT_PAGE_SIZE);
+  const currentPageRef = useRef(0);
 
-  const voucherRepository = new VoucherApiRepository();
-  const voucherUsageRepository = new VoucherUsageApiRepository();
+  const voucherRepository = useMemo(() => new VoucherApiRepository(), []);
+  const voucherUsageRepository = useMemo(() => new VoucherUsageApiRepository(), []);
   const { success, error: errorNotify } = useNotification();
 
   /**
@@ -39,6 +42,8 @@ export const useVouchers = () => {
   const fetchVouchers = useCallback(async (page: number = 0, size: number = DEFAULT_PAGE_SIZE) => {
     setLoading(true);
     setError(null);
+    currentPageRef.current = page;
+    pageSizeRef.current = size;
 
     try {
       const response = await voucherRepository.getAll(page, size);
@@ -48,19 +53,19 @@ export const useVouchers = () => {
         setPageInfo(response.data.pageInfo);
         setError(null);
       } else {
-        const errorMsg = response.message || "Failed to fetch vouchers";
+        const errorMsg = response.message || "Không thể tải danh sách voucher. Vui lòng thử lại sau.";
         setError(errorMsg);
         errorNotify(errorMsg);
       }
     } catch (err) {
       const errorMsg =
-        err instanceof Error ? err.message : "Error fetching vouchers";
+        err instanceof Error ? err.message : "Không thể tải danh sách voucher. Vui lòng thử lại sau.";
       setError(errorMsg);
       errorNotify(errorMsg);
     } finally {
       setLoading(false);
     }
-  }, [errorNotify]);
+  }, [errorNotify, voucherRepository]);
 
   /**
    * Search vouchers by code (paginated)
@@ -68,6 +73,8 @@ export const useVouchers = () => {
   const searchVouchers = useCallback(
     async (code: string, page: number = 0, size: number = DEFAULT_PAGE_SIZE) => {
       setSearchCode(code);
+      currentPageRef.current = page;
+      pageSizeRef.current = size;
 
       if (!code.trim()) {
         await fetchVouchers(page, size);
@@ -100,7 +107,7 @@ export const useVouchers = () => {
         setLoading(false);
       }
     },
-    [fetchVouchers, errorNotify]
+    [fetchVouchers, errorNotify, voucherRepository]
   );
 
   /**
@@ -109,12 +116,12 @@ export const useVouchers = () => {
   const goToPage = useCallback(
     async (page: number) => {
       if (searchCode.trim()) {
-        await searchVouchers(searchCode, page, pageInfo.pageSize);
+        await searchVouchers(searchCode, page, pageSizeRef.current);
       } else {
-        await fetchVouchers(page, pageInfo.pageSize);
+        await fetchVouchers(page, pageSizeRef.current);
       }
     },
-    [searchCode, pageInfo.pageSize, searchVouchers, fetchVouchers]
+    [searchCode, searchVouchers, fetchVouchers]
   );
 
   /**
@@ -163,17 +170,17 @@ export const useVouchers = () => {
           success(`Voucher "${createdVoucher.code}" created successfully`);
           setError(null);
           // Refresh current page to reflect the new voucher
-          await fetchVouchers(pageInfo.pageNo, pageInfo.pageSize);
+          await fetchVouchers(currentPageRef.current, pageSizeRef.current);
           return createdVoucher;
         } else {
-          const errorMsg = response.message || "Failed to create voucher";
+          const errorMsg = response.message || "Không thể tạo voucher. Vui lòng thử lại sau.";
           setError(errorMsg);
           errorNotify(errorMsg);
           return null;
         }
       } catch (err) {
         const errorMsg =
-          err instanceof Error ? err.message : "Error creating voucher";
+        err instanceof Error ? err.message : "Không thể tạo voucher. Vui lòng thử lại sau.";
         setError(errorMsg);
         errorNotify(errorMsg);
         return null;
@@ -181,7 +188,7 @@ export const useVouchers = () => {
         setLoading(false);
       }
     },
-    [success, errorNotify, fetchVouchers, pageInfo]
+    [success, errorNotify, fetchVouchers, voucherRepository]
   );
 
   /**
@@ -223,14 +230,14 @@ export const useVouchers = () => {
           setError(null);
           return updatedVoucher;
         } else {
-          const errorMsg = response.message || "Failed to update voucher";
+          const errorMsg = response.message || "Không thể cập nhật voucher. Vui lòng thử lại sau.";
           setError(errorMsg);
           errorNotify(errorMsg);
           return null;
         }
       } catch (err) {
         const errorMsg =
-          err instanceof Error ? err.message : "Error updating voucher";
+        err instanceof Error ? err.message : "Không thể cập nhật voucher. Vui lòng thử lại sau.";
         setError(errorMsg);
         errorNotify(errorMsg);
         return null;
@@ -238,7 +245,7 @@ export const useVouchers = () => {
         setLoading(false);
       }
     },
-    [success, errorNotify]
+    [success, errorNotify, voucherRepository]
   );
 
   /**
@@ -256,17 +263,17 @@ export const useVouchers = () => {
           success("Voucher deleted successfully");
           setError(null);
           // Refresh current page after deletion
-          await fetchVouchers(pageInfo.pageNo, pageInfo.pageSize);
+          await fetchVouchers(currentPageRef.current, pageSizeRef.current);
           return true;
         } else {
-          const errorMsg = response.message || "Failed to delete voucher";
+          const errorMsg = response.message || "Không thể xóa voucher. Vui lòng thử lại sau.";
           setError(errorMsg);
           errorNotify(errorMsg);
           return false;
         }
       } catch (err) {
         const errorMsg =
-          err instanceof Error ? err.message : "Error deleting voucher";
+        err instanceof Error ? err.message : "Không thể xóa voucher. Vui lòng thử lại sau.";
         setError(errorMsg);
         errorNotify(errorMsg);
         return false;
@@ -274,7 +281,7 @@ export const useVouchers = () => {
         setLoading(false);
       }
     },
-    [success, errorNotify, fetchVouchers, pageInfo]
+    [success, errorNotify, fetchVouchers, voucherRepository]
   );
 
   /**
@@ -305,17 +312,17 @@ export const useVouchers = () => {
           );
           setError(null);
           // Refresh vouchers to get updated quantity
-          await fetchVouchers(pageInfo.pageNo, pageInfo.pageSize);
+          await fetchVouchers(currentPageRef.current, pageSizeRef.current);
           return response.data;
         } else {
-          const errorMsg = response.message || "Failed to apply voucher";
-          setError(errorMsg);
+          const errorMsg = response.message || "Không thể áp dụng voucher. Vui lòng thử lại sau.";
           errorNotify(errorMsg);
+          setError(errorMsg);
           return null;
         }
       } catch (err) {
         const errorMsg =
-          err instanceof Error ? err.message : "Error applying voucher";
+          err instanceof Error ? err.message : "Không thể áp dụng voucher. Vui lòng thử lại sau.";
         setError(errorMsg);
         errorNotify(errorMsg);
         return null;
@@ -323,7 +330,7 @@ export const useVouchers = () => {
         setLoading(false);
       }
     },
-    [vouchers, success, errorNotify, fetchVouchers, pageInfo]
+    [vouchers, success, errorNotify, fetchVouchers, voucherUsageRepository]
   );
 
   /**
@@ -345,8 +352,11 @@ export const useVouchers = () => {
 
   // Fetch vouchers on mount
   useEffect(() => {
-    fetchVouchers();
-  }, []);
+    if (!initializedRef.current) {
+      initializedRef.current = true;
+      fetchVouchers();
+    }
+  }, [fetchVouchers]);
 
   return {
     // State

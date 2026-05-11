@@ -1,6 +1,7 @@
 import { VoucherUsage } from "../../domain/entities/VoucherUsage";
 import { IVoucherUsageRepository } from "../../domain/repositories/IVoucherUsageRepository";
 import { ApiResponse, PaginatedResponse, PageInfo } from "../../domain/entities/ApiResponse";
+import { toFriendlyApiErrorMessage } from "./apiErrorMessages";
 
 /**
  * VoucherUsageApiRepository - Implements IVoucherUsageRepository
@@ -10,6 +11,12 @@ import { ApiResponse, PaginatedResponse, PageInfo } from "../../domain/entities/
 export class VoucherUsageApiRepository implements IVoucherUsageRepository {
   private readonly baseUrl = "/api";
   private readonly endpoint = "/voucher-usages";
+  private readonly fallbackMessages = {
+    getAll: "Không thể tải lịch sử sử dụng voucher. Vui lòng thử lại sau.",
+    getByUserId: "Không thể tải lịch sử sử dụng voucher của người dùng. Vui lòng thử lại sau.",
+    getByVoucherId: "Không thể tải lịch sử sử dụng của voucher. Vui lòng thử lại sau.",
+    create: "Không thể ghi nhận lượt sử dụng voucher. Vui lòng thử lại sau.",
+  };
 
   /**
    * Extract content array from paginated API response
@@ -50,7 +57,11 @@ export class VoucherUsageApiRepository implements IVoucherUsageRepository {
    */
   async getAll(page: number = 0, size: number = 10): Promise<ApiResponse<PaginatedResponse<VoucherUsage>>> {
     try {
-      const params = new URLSearchParams({ page: page.toString(), size: size.toString() });
+      const params = new URLSearchParams({
+        page: page.toString(),
+        pageNo: page.toString(),
+        size: size.toString(),
+      });
       const response = await fetch(`${this.baseUrl}${this.endpoint}?${params.toString()}`, {
         method: "GET",
         headers: {
@@ -59,15 +70,31 @@ export class VoucherUsageApiRepository implements IVoucherUsageRepository {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP Error: ${response.status}`);
+        const bodyText = await response.text().catch(() => null);
+        return {
+          success: false,
+          message: toFriendlyApiErrorMessage({
+            status: response.status,
+            bodyText,
+            fallback: this.fallbackMessages.getAll,
+            notFoundMessage: "Không tìm thấy lịch sử sử dụng voucher.",
+          }),
+          data: { items: [], pageInfo: this.extractPageInfo(null) },
+        };
       }
 
       const apiResponse: ApiResponse<any> = await response.json();
+      
+      console.log("VoucherUsage API Response:", apiResponse);
+      console.log("VoucherUsage Raw Data:", apiResponse.data);
 
       if (apiResponse.success && apiResponse.data) {
         const content = this.extractContent(apiResponse.data);
         const usages = content.map((vu: any) => this.mapToVoucherUsage(vu));
         const pageInfo = this.extractPageInfo(apiResponse.data);
+        
+        console.log("Extracted pageInfo:", pageInfo);
+        console.log("Page info details - pageNo:", apiResponse.data.pageNo, "pageSize:", apiResponse.data.pageSize);
 
         return {
           success: true,
@@ -78,16 +105,21 @@ export class VoucherUsageApiRepository implements IVoucherUsageRepository {
 
       return {
         success: false,
-        message: apiResponse.message || "Failed to fetch voucher usages",
+        message: toFriendlyApiErrorMessage({
+          bodyText: apiResponse.message,
+          fallback: this.fallbackMessages.getAll,
+          notFoundMessage: "Không tìm thấy lịch sử sử dụng voucher.",
+        }),
         data: { items: [], pageInfo: this.extractPageInfo(null) },
       };
     } catch (error) {
       return {
         success: false,
-        message:
-          error instanceof Error
-            ? error.message
-            : "Error fetching voucher usages",
+        message: toFriendlyApiErrorMessage({
+          bodyText: error instanceof Error ? error.message : null,
+          fallback: this.fallbackMessages.getAll,
+          notFoundMessage: "Không tìm thấy lịch sử sử dụng voucher.",
+        }),
         data: { items: [], pageInfo: this.extractPageInfo(null) },
       };
     }
@@ -98,7 +130,12 @@ export class VoucherUsageApiRepository implements IVoucherUsageRepository {
    */
   async getByUserId(userId: number, page: number = 0, size: number = 10): Promise<ApiResponse<PaginatedResponse<VoucherUsage>>> {
     try {
-      const params = new URLSearchParams({ userId: userId.toString(), page: page.toString(), size: size.toString() });
+      const params = new URLSearchParams({
+        userId: userId.toString(),
+        page: page.toString(),
+        pageNo: page.toString(),
+        size: size.toString(),
+      });
       const response = await fetch(
         `${this.baseUrl}${this.endpoint}?${params.toString()}`,
         {
@@ -110,7 +147,17 @@ export class VoucherUsageApiRepository implements IVoucherUsageRepository {
       );
 
       if (!response.ok) {
-        throw new Error(`HTTP Error: ${response.status}`);
+        const bodyText = await response.text().catch(() => null);
+        return {
+          success: false,
+          message: toFriendlyApiErrorMessage({
+            status: response.status,
+            bodyText,
+            fallback: this.fallbackMessages.getByUserId,
+            notFoundMessage: "Không tìm thấy lịch sử sử dụng voucher của người dùng.",
+          }),
+          data: { items: [], pageInfo: this.extractPageInfo(null) },
+        };
       }
 
       const apiResponse: ApiResponse<any> = await response.json();
@@ -129,17 +176,21 @@ export class VoucherUsageApiRepository implements IVoucherUsageRepository {
 
       return {
         success: false,
-        message:
-          apiResponse.message || "Failed to fetch user voucher usages",
+        message: toFriendlyApiErrorMessage({
+          bodyText: apiResponse.message,
+          fallback: this.fallbackMessages.getByUserId,
+          notFoundMessage: "Không tìm thấy lịch sử sử dụng voucher của người dùng.",
+        }),
         data: { items: [], pageInfo: this.extractPageInfo(null) },
       };
     } catch (error) {
       return {
         success: false,
-        message:
-          error instanceof Error
-            ? error.message
-            : "Error fetching user voucher usages",
+        message: toFriendlyApiErrorMessage({
+          bodyText: error instanceof Error ? error.message : null,
+          fallback: this.fallbackMessages.getByUserId,
+          notFoundMessage: "Không tìm thấy lịch sử sử dụng voucher của người dùng.",
+        }),
         data: { items: [], pageInfo: this.extractPageInfo(null) },
       };
     }
@@ -150,7 +201,12 @@ export class VoucherUsageApiRepository implements IVoucherUsageRepository {
    */
   async getByVoucherId(voucherId: number, page: number = 0, size: number = 10): Promise<ApiResponse<PaginatedResponse<VoucherUsage>>> {
     try {
-      const params = new URLSearchParams({ voucherId: voucherId.toString(), page: page.toString(), size: size.toString() });
+      const params = new URLSearchParams({
+        voucherId: voucherId.toString(),
+        page: page.toString(),
+        pageNo: page.toString(),
+        size: size.toString(),
+      });
       const response = await fetch(
         `${this.baseUrl}${this.endpoint}?${params.toString()}`,
         {
@@ -162,7 +218,17 @@ export class VoucherUsageApiRepository implements IVoucherUsageRepository {
       );
 
       if (!response.ok) {
-        throw new Error(`HTTP Error: ${response.status}`);
+        const bodyText = await response.text().catch(() => null);
+        return {
+          success: false,
+          message: toFriendlyApiErrorMessage({
+            status: response.status,
+            bodyText,
+            fallback: this.fallbackMessages.getByVoucherId,
+            notFoundMessage: "Không tìm thấy lịch sử sử dụng của voucher.",
+          }),
+          data: { items: [], pageInfo: this.extractPageInfo(null) },
+        };
       }
 
       const apiResponse: ApiResponse<any> = await response.json();
@@ -181,17 +247,21 @@ export class VoucherUsageApiRepository implements IVoucherUsageRepository {
 
       return {
         success: false,
-        message:
-          apiResponse.message || "Failed to fetch voucher usages",
+        message: toFriendlyApiErrorMessage({
+          bodyText: apiResponse.message,
+          fallback: this.fallbackMessages.getByVoucherId,
+          notFoundMessage: "Không tìm thấy lịch sử sử dụng voucher.",
+        }),
         data: { items: [], pageInfo: this.extractPageInfo(null) },
       };
     } catch (error) {
       return {
         success: false,
-        message:
-          error instanceof Error
-            ? error.message
-            : "Error fetching voucher usages",
+        message: toFriendlyApiErrorMessage({
+          bodyText: error instanceof Error ? error.message : null,
+          fallback: this.fallbackMessages.getByVoucherId,
+          notFoundMessage: "Không tìm thấy lịch sử sử dụng của voucher.",
+        }),
         data: { items: [], pageInfo: this.extractPageInfo(null) },
       };
     }
@@ -217,7 +287,16 @@ export class VoucherUsageApiRepository implements IVoucherUsageRepository {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP Error: ${response.status}`);
+        const bodyText = await response.text().catch(() => null);
+        return {
+          success: false,
+          message: toFriendlyApiErrorMessage({
+            status: response.status,
+            bodyText,
+            fallback: this.fallbackMessages.create,
+            notFoundMessage: "Không tìm thấy voucher hoặc người dùng.",
+          }),
+        };
       }
 
       const apiResponse: ApiResponse<any> = await response.json();
@@ -233,15 +312,20 @@ export class VoucherUsageApiRepository implements IVoucherUsageRepository {
 
       return {
         success: false,
-        message: apiResponse.message || "Failed to create voucher usage",
+        message: toFriendlyApiErrorMessage({
+          bodyText: apiResponse.message,
+          fallback: this.fallbackMessages.create,
+          notFoundMessage: "Không tìm thấy voucher hoặc người dùng.",
+        }),
       };
     } catch (error) {
       return {
         success: false,
-        message:
-          error instanceof Error
-            ? error.message
-            : "Error creating voucher usage",
+        message: toFriendlyApiErrorMessage({
+          bodyText: error instanceof Error ? error.message : null,
+          fallback: this.fallbackMessages.create,
+          notFoundMessage: "Không tìm thấy voucher hoặc người dùng.",
+        }),
       };
     }
   }

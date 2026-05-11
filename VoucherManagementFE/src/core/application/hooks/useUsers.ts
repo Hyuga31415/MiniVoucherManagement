@@ -43,13 +43,13 @@ export const useUsers = () => {
         setPageInfo(response.data.pageInfo);
         setError(null);
       } else {
-        const errorMsg = response.message || "Failed to fetch users";
+        const errorMsg = response.message || "Không thể tải danh sách người dùng. Vui lòng thử lại sau.";
         setError(errorMsg);
         errorNotify(errorMsg);
       }
     } catch (err) {
       const errorMsg =
-        err instanceof Error ? err.message : "Error fetching users";
+        err instanceof Error ? err.message : "Không thể tải danh sách người dùng. Vui lòng thử lại sau.";
       setError(errorMsg);
       errorNotify(errorMsg);
     } finally {
@@ -107,14 +107,14 @@ export const useUsers = () => {
           await fetchUsers(pageInfo.pageNo, pageInfo.pageSize);
           return createdUser;
         } else {
-          const errorMsg = response.message || "Failed to create user";
+          const errorMsg = response.message || "Không thể tạo người dùng. Vui lòng thử lại sau.";
           setError(errorMsg);
           errorNotify(errorMsg);
           return null;
         }
       } catch (err) {
         const errorMsg =
-          err instanceof Error ? err.message : "Error creating user";
+        err instanceof Error ? err.message : "Không thể tạo người dùng. Vui lòng thử lại sau.";
         setError(errorMsg);
         errorNotify(errorMsg);
         return null;
@@ -159,14 +159,14 @@ export const useUsers = () => {
           setError(null);
           return updatedUser;
         } else {
-          const errorMsg = response.message || "Failed to update user";
+          const errorMsg = response.message || "Không thể cập nhật người dùng. Vui lòng thử lại sau.";
           setError(errorMsg);
           errorNotify(errorMsg);
           return null;
         }
       } catch (err) {
         const errorMsg =
-          err instanceof Error ? err.message : "Error updating user";
+        err instanceof Error ? err.message : "Không thể cập nhật người dùng. Vui lòng thử lại sau.";
         setError(errorMsg);
         errorNotify(errorMsg);
         return null;
@@ -195,14 +195,14 @@ export const useUsers = () => {
           await fetchUsers(pageInfo.pageNo, pageInfo.pageSize);
           return true;
         } else {
-          const errorMsg = response.message || "Failed to delete user";
+          const errorMsg = response.message || "Không thể xóa người dùng. Vui lòng thử lại sau.";
           setError(errorMsg);
           errorNotify(errorMsg);
           return false;
         }
       } catch (err) {
         const errorMsg =
-          err instanceof Error ? err.message : "Error deleting user";
+        err instanceof Error ? err.message : "Không thể xóa người dùng. Vui lòng thử lại sau.";
         setError(errorMsg);
         errorNotify(errorMsg);
         return false;

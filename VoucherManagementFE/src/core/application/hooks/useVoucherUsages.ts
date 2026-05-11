@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { VoucherUsage } from "../../domain/entities/VoucherUsage";
 import { VoucherUsageApiRepository } from "../../infrastructure/api/VoucherUsageApiRepository";
 import { PageInfo } from "../../domain/entities/ApiResponse";
@@ -24,6 +24,7 @@ export const useVoucherUsages = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pageInfo, setPageInfo] = useState<PageInfo>(DEFAULT_PAGE_INFO);
+  const pageSizeRef = useRef(DEFAULT_PAGE_SIZE);
 
   const voucherUsageRepository = new VoucherUsageApiRepository();
   const { error: errorNotify } = useNotification();
@@ -32,8 +33,10 @@ export const useVoucherUsages = () => {
    * Fetch all voucher usages (paginated)
    */
   const fetchUsages = useCallback(async (page: number = 0, size: number = DEFAULT_PAGE_SIZE) => {
+    console.log("fetchUsages called with page:", page, "size:", size);
     setLoading(true);
     setError(null);
+    pageSizeRef.current = size;
 
     try {
       const response = await voucherUsageRepository.getAll(page, size);
@@ -42,14 +45,15 @@ export const useVoucherUsages = () => {
         setUsages(response.data.items);
         setPageInfo(response.data.pageInfo);
         setError(null);
+        console.log("fetchUsages success, items count:", response.data.items.length);
       } else {
-        const errorMsg = response.message || "Failed to fetch voucher usages";
+        const errorMsg = response.message || "Không thể tải lịch sử sử dụng voucher. Vui lòng thử lại sau.";
         setError(errorMsg);
         errorNotify(errorMsg);
       }
     } catch (err) {
       const errorMsg =
-        err instanceof Error ? err.message : "Error fetching voucher usages";
+        err instanceof Error ? err.message : "Không thể tải lịch sử sử dụng voucher. Vui lòng thử lại sau.";
       setError(errorMsg);
       errorNotify(errorMsg);
     } finally {
@@ -62,9 +66,10 @@ export const useVoucherUsages = () => {
    */
   const goToPage = useCallback(
     async (page: number) => {
-      await fetchUsages(page, pageInfo.pageSize);
+      console.log("goToPage called with page:", page, "pageSize:", pageSizeRef.current);
+      await fetchUsages(page, pageSizeRef.current);
     },
-    [pageInfo.pageSize, fetchUsages]
+    [fetchUsages]
   );
 
   /**
@@ -95,14 +100,14 @@ export const useVoucherUsages = () => {
           return response.data.items;
         } else {
           const errorMsg =
-            response.message || "Failed to fetch user voucher usages";
+            response.message || "Không thể tải lịch sử sử dụng voucher của người dùng. Vui lòng thử lại sau.";
           setError(errorMsg);
           errorNotify(errorMsg);
           return [];
         }
       } catch (err) {
         const errorMsg =
-          err instanceof Error ? err.message : "Error fetching user usages";
+        err instanceof Error ? err.message : "Không thể tải lịch sử sử dụng voucher của người dùng. Vui lòng thử lại sau.";
         setError(errorMsg);
         errorNotify(errorMsg);
         return [];
@@ -133,14 +138,14 @@ export const useVoucherUsages = () => {
           return response.data.items;
         } else {
           const errorMsg =
-            response.message || "Failed to fetch voucher usages";
+            response.message || "Không thể tải lịch sử sử dụng của voucher. Vui lòng thử lại sau.";
           setError(errorMsg);
           errorNotify(errorMsg);
           return [];
         }
       } catch (err) {
         const errorMsg =
-          err instanceof Error ? err.message : "Error fetching voucher usages";
+        err instanceof Error ? err.message : "Không thể tải lịch sử sử dụng của voucher. Vui lòng thử lại sau.";
         setError(errorMsg);
         errorNotify(errorMsg);
         return [];
@@ -155,8 +160,8 @@ export const useVoucherUsages = () => {
    * Refresh usages list
    */
   const refreshUsages = useCallback(async () => {
-    await fetchUsages(pageInfo.pageNo, pageInfo.pageSize);
-  }, [fetchUsages, pageInfo]);
+    await fetchUsages(pageInfo.pageNo, pageSizeRef.current);
+  }, [fetchUsages, pageInfo.pageNo]);
 
   /**
    * Clear error state

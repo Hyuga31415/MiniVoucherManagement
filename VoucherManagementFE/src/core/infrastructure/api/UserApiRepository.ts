@@ -1,6 +1,7 @@
 import { User } from "../../domain/entities/User";
 import { IUserRepository } from "../../domain/repositories/IUserRepository";
 import { ApiResponse, PaginatedResponse, PageInfo } from "../../domain/entities/ApiResponse";
+import { toFriendlyApiErrorMessage } from "./apiErrorMessages";
 
 /**
  * UserApiRepository - Implements IUserRepository
@@ -10,6 +11,13 @@ import { ApiResponse, PaginatedResponse, PageInfo } from "../../domain/entities/
 export class UserApiRepository implements IUserRepository {
   private readonly baseUrl = "/api";
   private readonly endpoint = "/users";
+  private readonly fallbackMessages = {
+    getAll: "Không thể tải danh sách người dùng. Vui lòng thử lại sau.",
+    getById: "Không thể tải thông tin người dùng. Vui lòng thử lại sau.",
+    create: "Không thể tạo người dùng. Vui lòng thử lại sau.",
+    update: "Không thể cập nhật người dùng. Vui lòng thử lại sau.",
+    delete: "Không thể xóa người dùng. Vui lòng thử lại sau.",
+  };
 
   /**
    * Extract content array from paginated API response
@@ -60,7 +68,17 @@ export class UserApiRepository implements IUserRepository {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP Error: ${response.status}`);
+        const bodyText = await response.text().catch(() => null);
+        return {
+          success: false,
+          message: toFriendlyApiErrorMessage({
+            status: response.status,
+            bodyText,
+            fallback: this.fallbackMessages.getAll,
+            notFoundMessage: "Không tìm thấy người dùng.",
+          }),
+          data: { items: [], pageInfo: this.extractPageInfo(null) },
+        };
       }
 
       const apiResponse: ApiResponse<any> = await response.json();
@@ -79,16 +97,21 @@ export class UserApiRepository implements IUserRepository {
 
       return {
         success: false,
-        message: apiResponse.message || "Failed to fetch users",
+        message: toFriendlyApiErrorMessage({
+          bodyText: apiResponse.message,
+          fallback: this.fallbackMessages.getAll,
+          notFoundMessage: "Không tìm thấy người dùng.",
+        }),
         data: { items: [], pageInfo: this.extractPageInfo(null) },
       };
     } catch (error) {
       return {
         success: false,
-        message:
-          error instanceof Error
-            ? error.message
-            : "Error fetching users",
+        message: toFriendlyApiErrorMessage({
+          bodyText: error instanceof Error ? error.message : null,
+          fallback: this.fallbackMessages.getAll,
+          notFoundMessage: "Không tìm thấy người dùng.",
+        }),
         data: { items: [], pageInfo: this.extractPageInfo(null) },
       };
     }
@@ -107,7 +130,16 @@ export class UserApiRepository implements IUserRepository {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP Error: ${response.status}`);
+        const bodyText = await response.text().catch(() => null);
+        return {
+          success: false,
+          message: toFriendlyApiErrorMessage({
+            status: response.status,
+            bodyText,
+            fallback: this.fallbackMessages.getById,
+            notFoundMessage: "Không tìm thấy người dùng.",
+          }),
+        };
       }
 
       const apiResponse: ApiResponse<any> = await response.json();
@@ -123,15 +155,20 @@ export class UserApiRepository implements IUserRepository {
 
       return {
         success: false,
-        message: apiResponse.message || "User not found",
+        message: toFriendlyApiErrorMessage({
+          bodyText: apiResponse.message,
+          fallback: this.fallbackMessages.getById,
+          notFoundMessage: "Không tìm thấy người dùng.",
+        }),
       };
     } catch (error) {
       return {
         success: false,
-        message:
-          error instanceof Error
-            ? error.message
-            : "Error fetching user",
+        message: toFriendlyApiErrorMessage({
+          bodyText: error instanceof Error ? error.message : null,
+          fallback: this.fallbackMessages.getById,
+          notFoundMessage: "Không tìm thấy người dùng.",
+        }),
       };
     }
   }
@@ -156,7 +193,16 @@ export class UserApiRepository implements IUserRepository {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP Error: ${response.status}`);
+        const bodyText = await response.text().catch(() => null);
+        return {
+          success: false,
+          message: toFriendlyApiErrorMessage({
+            status: response.status,
+            bodyText,
+            fallback: this.fallbackMessages.create,
+            notFoundMessage: "Không tìm thấy người dùng.",
+          }),
+        };
       }
 
       const apiResponse: ApiResponse<any> = await response.json();
@@ -172,15 +218,20 @@ export class UserApiRepository implements IUserRepository {
 
       return {
         success: false,
-        message: apiResponse.message || "Failed to create user",
+        message: toFriendlyApiErrorMessage({
+          bodyText: apiResponse.message,
+          fallback: this.fallbackMessages.create,
+          notFoundMessage: "Không tìm thấy người dùng.",
+        }),
       };
     } catch (error) {
       return {
         success: false,
-        message:
-          error instanceof Error
-            ? error.message
-            : "Error creating user",
+        message: toFriendlyApiErrorMessage({
+          bodyText: error instanceof Error ? error.message : null,
+          fallback: this.fallbackMessages.create,
+          notFoundMessage: "Không tìm thấy người dùng.",
+        }),
       };
     }
   }
@@ -205,7 +256,16 @@ export class UserApiRepository implements IUserRepository {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP Error: ${response.status}`);
+        const bodyText = await response.text().catch(() => null);
+        return {
+          success: false,
+          message: toFriendlyApiErrorMessage({
+            status: response.status,
+            bodyText,
+            fallback: this.fallbackMessages.update,
+            notFoundMessage: "Không tìm thấy người dùng.",
+          }),
+        };
       }
 
       const apiResponse: ApiResponse<any> = await response.json();
@@ -221,15 +281,20 @@ export class UserApiRepository implements IUserRepository {
 
       return {
         success: false,
-        message: apiResponse.message || "Failed to update user",
+        message: toFriendlyApiErrorMessage({
+          bodyText: apiResponse.message,
+          fallback: this.fallbackMessages.update,
+          notFoundMessage: "Không tìm thấy người dùng.",
+        }),
       };
     } catch (error) {
       return {
         success: false,
-        message:
-          error instanceof Error
-            ? error.message
-            : "Error updating user",
+        message: toFriendlyApiErrorMessage({
+          bodyText: error instanceof Error ? error.message : null,
+          fallback: this.fallbackMessages.update,
+          notFoundMessage: "Không tìm thấy người dùng.",
+        }),
       };
     }
   }
@@ -247,7 +312,16 @@ export class UserApiRepository implements IUserRepository {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP Error: ${response.status}`);
+        const bodyText = await response.text().catch(() => null);
+        return {
+          success: false,
+          message: toFriendlyApiErrorMessage({
+            status: response.status,
+            bodyText,
+            fallback: this.fallbackMessages.delete,
+            notFoundMessage: "Không tìm thấy người dùng.",
+          }),
+        };
       }
 
       const apiResponse: ApiResponse<void> = await response.json();
@@ -260,10 +334,11 @@ export class UserApiRepository implements IUserRepository {
     } catch (error) {
       return {
         success: false,
-        message:
-          error instanceof Error
-            ? error.message
-            : "Error deleting user",
+        message: toFriendlyApiErrorMessage({
+          bodyText: error instanceof Error ? error.message : null,
+          fallback: this.fallbackMessages.delete,
+          notFoundMessage: "Không tìm thấy người dùng.",
+        }),
       };
     }
   }

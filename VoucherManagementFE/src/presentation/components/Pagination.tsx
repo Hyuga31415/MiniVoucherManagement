@@ -58,14 +58,17 @@ export const Pagination: React.FC<PaginationProps> = ({
     <div className="flex items-center justify-between py-3 px-1 gap-4">
       {/* Info */}
       <div className="text-[11px] text-gray-500 whitespace-nowrap">
-        {startItem}–{endItem} / {totalElements}
+        {startItem}–{endItem} / {totalElements} (page {pageNo} of {totalPages - 1})
       </div>
 
       {/* Page buttons */}
       <div className="flex items-center gap-1">
         {/* First page */}
         <button
-          onClick={() => onPageChange(0)}
+          onClick={() => {
+            console.log("First page button clicked");
+            onPageChange(0);
+          }}
           disabled={pageNo === 0}
           className="p-1 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
           title="First page"
@@ -75,7 +78,10 @@ export const Pagination: React.FC<PaginationProps> = ({
 
         {/* Previous */}
         <button
-          onClick={() => onPageChange(pageNo - 1)}
+          onClick={() => {
+            console.log("Previous page button clicked");
+            onPageChange(pageNo - 1);
+          }}
           disabled={pageNo === 0}
           className="p-1 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
           title="Previous page"
@@ -92,7 +98,10 @@ export const Pagination: React.FC<PaginationProps> = ({
           ) : (
             <button
               key={page}
-              onClick={() => onPageChange(page as number)}
+              onClick={() => {
+                console.log("Page button clicked:", page);
+                onPageChange(page as number);
+              }}
               className={`min-w-[24px] h-6 text-[11px] rounded transition-colors cursor-pointer ${
                 pageNo === page
                   ? "bg-blue-600 text-white font-semibold"
